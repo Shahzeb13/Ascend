@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { addExercise } from "../../../services/LogExerciseService";
-import { exercise } from "../../../types/LogExerciseServiceTypes";
+import { exercise } from "../../types/LogExerciseServiceTypes";
+import { useExercises } from "../../context/ExerciseContext";
 
 type CategoryType = "Back" | "Chest" | "Shoulders" | "Arms" | "Abs" | "Legs";
 
@@ -12,8 +12,8 @@ export default function LogWorkoutScreen() {
   const [weight, setWeight] = useState("0.0");
   const [repsList, setRepsList] = useState<number[]>([10, 8, 8]);
   
-  // Track all exercises saved in this session
-  const [savedExercises, setSavedExercises] = useState<exercise[]>([]);
+  // Use global context to save exercises
+  const { add } = useExercises();
 
   // Live calculations
   const totalReps = repsList.reduce((acc, curr) => acc + curr, 0);
@@ -51,9 +51,8 @@ export default function LogWorkoutScreen() {
       })),
     };
 
-    // 2. Call the service logic to add the exercise to our list
-    const updatedList = addExercise(savedExercises, newExercise);
-    setSavedExercises(updatedList);
+    // 2. Add to global context
+    add(newExercise);
 
     Alert.alert(
       "Workout Saved!",

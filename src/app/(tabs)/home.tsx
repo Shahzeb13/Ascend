@@ -1,49 +1,108 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useExercises } from "../../context/ExerciseContext";
+import * as Stats from "../../../services/DashboardStatsService";
+import { exercise } from "../../../types/LogExerciseServiceTypes";
 
 type ExerciseCardProps = {
-  name: string;
-  sub: string;
-  latest: string;
-  volume: string;
-  hasPr?: boolean;
+  ex: exercise;
+  onEdit: () => void;
 };
 
-function ExerciseCard({ name, sub, latest, volume, hasPr }: ExerciseCardProps) {
+function ExerciseCard({ ex, onEdit }: ExerciseCardProps) {
   const router = useRouter();
+
+  // Calculate total volume for this single exercise instance
+  const totalVolume = ex.sets.reduce((sum, s) => sum + s.reps * s.weight, 0);
   
+  // Find highest weight logged in its sets
+  const latestWeight = ex.sets.length > 0 ? Math.max(...ex.sets.map(s => s.weight)) : 0;
+
   return (
-    <TouchableOpacity 
-      style={styles.exerciseCard} 
-      activeOpacity={0.7}
-      onPress={() => router.push("/exerciseDetails")}
-    >
-      <View style={styles.cardLeft}>
-        <Text style={styles.exerciseName}>{name}</Text>
-        <Text style={styles.exerciseSub}>{sub}</Text>
-      </View>
-      <View style={styles.cardRight}>
-        <View style={styles.statColumn}>
-          <Text style={styles.statLabel}>Latest</Text>
-          <Text style={styles.statVal}>{latest}</Text>
+    <View style={styles.exerciseCardWrapper}>
+      <TouchableOpacity 
+        style={styles.exerciseCard} 
+        activeOpacity={0.7}
+        onPress={() => router.push("/exerciseDetails")}
+      >
+        <View style={styles.cardLeft}>
+          <Text style={styles.exerciseName}>{ex.name}</Text>
+          <Text style={styles.exerciseSub}>{ex.description || ex.category}</Text>
         </View>
-        <View style={styles.statColumn}>
-          <Text style={styles.statLabel}>Volume</Text>
-          <Text style={styles.statVal}>{volume}</Text>
-        </View>
-        {hasPr && (
-          <View style={styles.prBadge}>
-            <Text style={styles.prText}>PR</Text>
+        <View style={styles.cardRight}>
+          <View style={styles.statColumn}>
+            <Text style={styles.statLabel}>Max Weight</Text>
+            <Text style={styles.statVal}>{latestWeight} kg</Text>
           </View>
-        )}
-      </View>
-    </TouchableOpacity>
+          <View style={styles.statColumn}>
+            <Text style={styles.statLabel}>Volume</Text>
+            <Text style={styles.statVal}>{totalVolume.toLocaleString()} kg</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Edit Trigger Pencil Button */}
+      <TouchableOpacity style={styles.editButton} onPress={onEdit} activeOpacity={0.6}>
+        <Ionicons name="pencil-outline" size={16} color="#3B82F6" />
+      </TouchableOpacity>
+    </View>
   );
 }
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { exercises, edit } = useExercises();
+
+  // Calculate dynamic dashboard stats using the DashboardStatsService
+  const weeklyVolume = Stats.calculateWeeklyVolume(exercises);
+  const consistencyDays = Stats.calculateConsistencyDays(exercises);
+  const prsThisMonth = Stats.calculatePRs(exercises);
+  const activeStreak = Stats.calculateStreakWeeks(exercises);
+
+  const categories: Array<"Chest" | "Back" | "Shoulders" | "Arms" | "Abs" | "Legs"> = [
+    "Chest", "Back", "Shoulders", "Arms", "Abs", "Legs"
+  ];
+
+  const handleEditExerciseName = (ex: exercise) => {
+    // Standard cross-platform compatible quick-edit flow
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        "Edit Exercise Name",
+        "Enter a new name for this exercise:",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Save", 
+            onPress: (newName) => {
+              if (newName && newName.trim()) {
+                edit(ex.id, { name: newName.trim() });
+              }
+            } 
+          }
+        ],
+        "plain-text",
+        ex.name
+      );
+    } else {
+      // Android / Web fallback using simple prompt alerts
+      Alert.alert(
+        "Edit Exercise",
+        `Do you want to edit "${ex.name}"?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Rename to Bench Press Pro", 
+            onPress: () => edit(ex.id, { name: `${ex.name} Pro` }) 
+          },
+          { 
+            text: "Mark as High Intensity", 
+            onPress: () => edit(ex.id, { description: "High Intensity Workout 🔥" }) 
+          }
+        ]
+      );
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -71,76 +130,61 @@ export default function HomeScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.statsCard}>
             <Text style={styles.statsLabel}>Weekly Volume</Text>
-            <Text style={styles.statsValBig}>42,500 lbs</Text>
+            <Text style={styles.statsValBig}>{weeklyVolume.toLocaleString()} kg</Text>
           </View>
           <View style={styles.statsCard}>
             <Text style={styles.statsLabel}>Consistency</Text>
-            <Text style={[styles.statsValBig, { color: '#10B981' }]}>12 Days</Text>
+            <Text style={[styles.statsValBig, { color: '#10B981' }]}>{consistencyDays} Days</Text>
           </View>
           <View style={styles.statsCard}>
             <Text style={styles.statsLabel}>PRs this month</Text>
-            <Text style={[styles.statsValBig, { color: '#F59E0B' }]}>8</Text>
+            <Text style={[styles.statsValBig, { color: '#F59E0B' }]}>{prsThisMonth}</Text>
           </View>
           <View style={styles.statsCard}>
             <Text style={styles.statsLabel}>Active Streak</Text>
-            <Text style={styles.statsValBig}>4 weeks</Text>
+            <Text style={styles.statsValBig}>{activeStreak} weeks</Text>
           </View>
         </View>
 
-        {/* Categories */}
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>CHEST</Text>
-            <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
+        {/* Empty State Message */}
+        {exercises.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <Ionicons name="fitness-outline" size={48} color="#4B5563" style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No Workouts Logged Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Your workouts will show up here categorized by muscle group once you log them.
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyButton} 
+              onPress={() => router.push("/log")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.emptyButtonText}>Log First Workout</Text>
+            </TouchableOpacity>
           </View>
-          <ExerciseCard name="Bench Press" sub="Barbell" latest="225 lbs" volume="3,150" hasPr />
-          <ExerciseCard name="Incline DB Press" sub="Dumbbell" latest="85 lbs" volume="2,040" />
-        </View>
+        ) : (
+          // Dynamic Exercise Categories
+          categories.map((cat) => {
+            const filtered = Stats.filterExercisesByCategory(exercises, cat);
+            if (filtered.length === 0) return null; // Only show category sections that have active logged exercises
 
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>BACK</Text>
-            <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
-          </View>
-          <ExerciseCard name="Deadlift" sub="Conventional" latest="405 lbs" volume="2,025" hasPr />
-          <ExerciseCard name="Pull Ups" sub="Weighted" latest="+45 lbs" volume="1,850" />
-        </View>
-
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>LEGS</Text>
-            <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
-          </View>
-          <ExerciseCard name="Squat" sub="High Bar" latest="315 lbs" volume="4,725" />
-          <ExerciseCard name="Leg Press" sub="45 Degree" latest="540 lbs" volume="8,100" hasPr />
-        </View>
-
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>SHOULDERS</Text>
-            <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
-          </View>
-          <ExerciseCard name="OHP" sub="Strict" latest="135 lbs" volume="1,350" />
-          <ExerciseCard name="Lateral Raise" sub="Dumbbell" latest="35 lbs" volume="1,050" />
-        </View>
-
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>ARMS</Text>
-            <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
-          </View>
-          <ExerciseCard name="Skullcrushers" sub="EZ Bar" latest="75 lbs" volume="900" />
-          <ExerciseCard name="Incline Curls" sub="Dumbbell" latest="30 lbs" volume="720" hasPr />
-        </View>
-
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Text style={styles.categoryTitle}>CORE</Text>
-            <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
-          </View>
-          <ExerciseCard name="Cable Crunch" sub="Kneeling" latest="110 lbs" volume="1,650" />
-          <ExerciseCard name="Hanging Leg Raise" sub="Strict" latest="BW" volume="60" />
-        </View>
+            return (
+              <View key={cat} style={styles.categorySection}>
+                <View style={styles.categoryHeader}>
+                  <Text style={styles.categoryTitle}>{cat.toUpperCase()}</Text>
+                  <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
+                </View>
+                {filtered.map((ex) => (
+                  <ExerciseCard 
+                    key={ex.id} 
+                    ex={ex} 
+                    onEdit={() => handleEditExerciseName(ex)} 
+                  />
+                ))}
+              </View>
+            );
+          })
+        )}
       </ScrollView>
 
       {/* Floating Action Button */}
@@ -246,6 +290,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 1,
   },
+  exerciseCardWrapper: {
+    position: 'relative',
+    marginBottom: 10,
+  },
   exerciseCard: {
     backgroundColor: '#161A22',
     borderRadius: 12,
@@ -255,7 +303,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#1E293B',
-    marginBottom: 10,
+    paddingRight: 45, // Make room for floating edit pencil icon
   },
   cardLeft: {
     flex: 1.2,
@@ -291,17 +339,53 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
-  prBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: '#10B981',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  editButton: {
+    position: 'absolute',
+    right: 12,
+    top: '30%',
+    backgroundColor: '#1F2937',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  prText: {
-    color: '#10B981',
-    fontSize: 10,
+  emptyStateContainer: {
+    backgroundColor: '#161A22',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 12,
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  emptyIcon: {
+    marginBottom: 15,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+  },
+  emptyButton: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: 'bold',
   },
   fab: {
