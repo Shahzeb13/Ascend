@@ -1,56 +1,89 @@
-# Welcome to your Expo app 👋
+# 🏋️‍♂️ Ascend - Track Your Climb
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Ascend is a premium, high-fidelity fitness and workout tracker built with **React Native**, **Expo Router**, and **TypeScript**. It features a modern dark-themed user interface designed to help you track your weekly volume, streaks, and personal records with style.
 
-## Get started
+<p align="center">
+  <img src="./Ascend%20Screens/Home%20Screen.png" width="22%" alt="Home Dashboard" />
+  <img src="./Ascend%20Screens/LogWorkoutScreen.png" width="22%" alt="Log Workout Screen" />
+  <img src="./Ascend%20Screens/History%20Screen.png" width="22%" alt="History Screen" />
+  <img src="./Ascend%20Screens/Exercise%20Details%20Screen.png" width="22%" alt="Exercise Details Screen" />
+</p>
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## ✨ Features
 
-2. Start the app
+- **🏆 High-Fidelity Dashboard**: Monitor your weekly volume, consistency, active streaks, and monthly PRs at a glance.
+- **📝 Interactive Workout Logger**: Dynamic form logging that automatically calculates **TOTAL REPS** and **ESTIMATED VOLUME** live as you update reps or add sets.
+- **📊 Performance Analytics & Charts**: Custom-styled visual volume charts representing 30-day progression trends, detailed historical logs grouped by month, and progression insights.
+- **🎯 Dynamic Routing (Expo Router)**: Fluid navigation between tabs (Dashboard, Log, History, Playground) with hidden stacked detail views for deep-dives.
+- **🔒 Type-Safe Architecture**: Written completely in TypeScript with decoupled service layers to handle clean, predictable state transactions.
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 🛠️ Technology Stack
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Framework**: [Expo SDK 54](https://expo.dev/)
+- **Core Library**: [React Native](https://reactnative.dev/) (React 19)
+- **Routing**: [Expo Router](https://docs.expo.dev/router/introduction/) (File-based Routing)
+- **Icons**: `@expo/vector-icons` (Ionicons)
+- **Language**: TypeScript
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
+## 🚀 Getting Started
 
-When you're ready, run:
+To run Ascend locally on your machine or mobile device:
 
+### 1. Prerequisites
+Make sure you have Node.js installed on your computer.
+
+### 2. Installation
+Clone the repository and install the project dependencies:
 ```bash
-npm run reset-project
+# Navigate to the project directory
+cd Ascend
+
+# Install packages with peer dependencies bypass
+npm install --legacy-peer-deps
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 3. Run the Development Server
+Start the Expo Metro Bundler:
+```bash
+npm start
+```
 
-### Other setup steps
+- Press **`a`** to open in an Android Emulator.
+- Press **`w`** to open in a web browser.
+- Scan the **QR Code** displayed in your terminal using the **Expo Go** app on iOS/Android to run it directly on your physical mobile device!
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+---
 
-## Learn more
+## 📂 File Structure
 
-To learn more about developing your project with Expo, look at the following resources:
+```text
+Ascend/
+├── Ascend Screens/          # Reference UI screenshots
+├── services/                # Decoupled workout services
+│   └── LogExerciseService.ts
+├── types/                   # Type-safe interfaces
+│   └── LogExerciseServiceTypes.ts
+└── src/
+    └── app/                 # Expo Router Root
+        ├── _layout.tsx      # Root Stack Navigator
+        ├── index.tsx        # Automatic tab redirect
+        └── (tabs)/          # Route-grouped Bottom Tab Navigation
+            ├── _layout.tsx  # Tabs styling and setup
+            ├── home.tsx     # Dashboard
+            ├── log.tsx      # Workout logging
+            ├── history.tsx  # History timeline & custom charts
+            ├── exerciseDetails.tsx # Detail analytics screen (hidden href)
+            └── testPlayground.tsx  # Service testing ground
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## 📜 License
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This project is licensed under the MIT License.
