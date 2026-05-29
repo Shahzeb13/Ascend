@@ -9,7 +9,7 @@ export const db = sqlite.openDatabaseSync("Ascend.db");
 export function initDb() {
 
     db.execSync(`
-    PRAGRAM foreign_keys = ON;
+    PRAGMA foreign_keys = ON;
 
     CREATE TABLE IF NOT EXISTS Workouts (
     id INTEGER PRIMARY KEY  AUTOINCREMENT,

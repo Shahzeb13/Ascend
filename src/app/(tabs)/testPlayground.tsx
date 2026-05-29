@@ -1,11 +1,14 @@
 import { View, Text, StyleSheet, Button, ScrollView } from "react-native";
 import { useState } from "react";
-import { addExercise, removeExercise, editExercise } from "../../../services/LogExerciseService";
-import { exercise } from "../../../types/LogExerciseServiceTypes";
+import { addExercise, removeExercise, editExercise, getWorkouts } from "../../../services/LogExerciseService";
+import { exercise, workout } from "../../../types/LogExerciseServiceTypes";
 
 export default function Playground() {
     // We'll hold our test exercises in React state so the UI updates when we change them
     const [exercises, setExercises] = useState<exercise[]>([]);
+    
+    // State to hold workouts fetched from SQLite
+    const [dbWorkouts, setDbWorkouts] = useState<workout[]>([]);
 
     const handleAdd = () => {
         console.log("ADding exrcies");
@@ -38,12 +41,19 @@ export default function Playground() {
         setExercises(updated);
     };
 
+    const handleFetchWorkouts = () => {
+        console.log("Fetching workouts from SQLite...");
+        const fetchedWorkouts = getWorkouts();
+        setDbWorkouts(fetchedWorkouts);
+    };
+
     return (
         <View style={styles.wrapper}>
             <Text style={styles.heading}>Service Playground</Text>
 
             <View style={styles.buttonRow}>
                 <Button title="Add Test Exercise" onPress={handleAdd} />
+                <Button title="Fetch SQLite Workouts" onPress={handleFetchWorkouts} color="#3B82F6" />
             </View>
 
             {/* ScrollView lets us scroll if the list gets too long */}
@@ -59,6 +69,19 @@ export default function Playground() {
                         </View>
                     </View>
                 ))}
+
+                {dbWorkouts.length > 0 && (
+                    <View style={{ marginTop: 20 }}>
+                        <Text style={styles.subHeading}>SQLite Workouts</Text>
+                        {dbWorkouts.map((w) => (
+                            <View key={w.id} style={styles.dbCard}>
+                                <Text style={styles.cardTitle}>Workout #{w.id}</Text>
+                                <Text>Category: {w.category}</Text>
+                                <Text>Created: {w.created_at}</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
             </ScrollView>
         </View>
     );
@@ -100,5 +123,19 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 18,
         fontWeight: "bold",
+    },
+    subHeading: {
+        fontSize: 20,
+        fontWeight: "bold",
+        marginBottom: 10,
+        color: "#3B82F6"
+    },
+    dbCard: {
+        backgroundColor: "#e0f2fe",
+        padding: 15,
+        borderRadius: 8,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: "#bae6fd",
     }
 });

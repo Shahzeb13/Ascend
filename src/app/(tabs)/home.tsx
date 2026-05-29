@@ -1,111 +1,108 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import { useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useExercises } from "../../context/ExerciseContext";
-import * as Stats from "../../../services/DashboardStatsService";
-import { exercise } from "../../../types/LogExerciseServiceTypes";
+import { useFocusEffect } from "expo-router";
+import { workout } from "../../../types/LogExerciseServiceTypes";
+import { getWorkouts } from "../../../services/LogExerciseService";
+import Toast from "../../components/Toast";
 
-type ExerciseCardProps = {
-  ex: exercise;
-  onEdit: () => void;
+// ── Category colour map ───────────────────────────────────────────────────────
+const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  Chest:     { bg: "#1A2438", text: "#60A5FA", border: "#1E3A5F" },
+  Back:      { bg: "#1A2430", text: "#34D399", border: "#1E3D30" },
+  Shoulders: { bg: "#261A38", text: "#A78BFA", border: "#3B2A5F" },
+  Arms:      { bg: "#261A1A", text: "#F87171", border: "#5F2A2A" },
+  Abs:       { bg: "#1A2620", text: "#4ADE80", border: "#1E4030" },
+  Legs:      { bg: "#261F1A", text: "#FB923C", border: "#5F3A1E" },
 };
 
-function ExerciseCard({ ex, onEdit }: ExerciseCardProps) {
-  const router = useRouter();
+// ── Workout Card ──────────────────────────────────────────────────────────────
+type WorkoutCardProps = { w: workout };
 
-  // Calculate total volume for this single exercise instance
-  const totalVolume = ex.sets.reduce((sum, s) => sum + s.reps * s.weight, 0);
-  
-  // Find highest weight logged in its sets
-  const latestWeight = ex.sets.length > 0 ? Math.max(...ex.sets.map(s => s.weight)) : 0;
+function WorkoutCard({ w }: WorkoutCardProps) {
+  const router = useRouter();
+  const cfg = CATEGORY_COLORS[w.category] ?? CATEGORY_COLORS["Chest"];
+
+  // Format the SQLite created_at timestamp nicely
+  const formattedDate = w.created_at
+    ? new Date(w.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "—";
 
   return (
-    <View style={styles.exerciseCardWrapper}>
-      <TouchableOpacity 
-        style={styles.exerciseCard} 
-        activeOpacity={0.7}
-        onPress={() => router.push("/exerciseDetails")}
-      >
-        <View style={styles.cardLeft}>
-          <Text style={styles.exerciseName}>{ex.name}</Text>
-          <Text style={styles.exerciseSub}>{ex.description || ex.category}</Text>
+    <TouchableOpacity
+      style={styles.workoutCard}
+      activeOpacity={0.75}
+      onPress={() => router.push("/log")} // will go to edit screen later
+    >
+      {/* Left: Category badge + date */}
+      <View style={styles.cardLeft}>
+        <View style={[styles.categoryBadge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+          <Text style={[styles.categoryBadgeText, { color: cfg.text }]}>{w.category}</Text>
         </View>
-        <View style={styles.cardRight}>
-          <View style={styles.statColumn}>
-            <Text style={styles.statLabel}>Max Weight</Text>
-            <Text style={styles.statVal}>{latestWeight} kg</Text>
-          </View>
-          <View style={styles.statColumn}>
-            <Text style={styles.statLabel}>Volume</Text>
-            <Text style={styles.statVal}>{totalVolume.toLocaleString()} kg</Text>
-          </View>
+        <View style={styles.dateRow}>
+          <Ionicons name="calendar-outline" size={11} color="#4B5563" />
+          <Text style={styles.dateText}>{formattedDate}</Text>
         </View>
-      </TouchableOpacity>
+      </View>
 
-      {/* Edit Trigger Pencil Button */}
-      <TouchableOpacity style={styles.editButton} onPress={onEdit} activeOpacity={0.6}>
-        <Ionicons name="pencil-outline" size={16} color="#3B82F6" />
-      </TouchableOpacity>
-    </View>
+      {/* Right: ID chip + chevron */}
+      <View style={styles.cardRight}>
+        <Text style={styles.idChip}>#{w.id}</Text>
+        <Ionicons name="chevron-forward" size={16} color="#374151" />
+      </View>
+    </TouchableOpacity>
   );
 }
 
+// ── Home Screen ───────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const router = useRouter();
-  const { exercises, edit } = useExercises();
+  const [workouts, setWorkouts] = useState<workout[]>([]);
+  const [toast, setToast] = useState<{
+    visible: boolean;
+    message: string;
+    type: "success" | "error" | "info";
+  }>({ visible: false, message: "", type: "info" });
 
-  // Calculate dynamic dashboard stats using the DashboardStatsService
-  const weeklyVolume = Stats.calculateWeeklyVolume(exercises);
-  const consistencyDays = Stats.calculateConsistencyDays(exercises);
-  const prsThisMonth = Stats.calculatePRs(exercises);
-  const activeStreak = Stats.calculateStreakWeeks(exercises);
+  const hideToast = () => setToast((prev) => ({ ...prev, visible: false }));
 
-  const categories: Array<"Chest" | "Back" | "Shoulders" | "Arms" | "Abs" | "Legs"> = [
-    "Chest", "Back", "Shoulders", "Arms", "Abs", "Legs"
-  ];
+  // Refresh every time this tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const rows = getWorkouts();
+      setWorkouts(rows);
+    }, [])
+  );
 
-  const handleEditExerciseName = (ex: exercise) => {
-    // Standard cross-platform compatible quick-edit flow
-    if (Platform.OS === 'ios') {
-      Alert.prompt(
-        "Edit Exercise Name",
-        "Enter a new name for this exercise:",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Save", 
-            onPress: (newName) => {
-              if (newName && newName.trim()) {
-                edit(ex.id, { name: newName.trim() });
-              }
-            } 
-          }
-        ],
-        "plain-text",
-        ex.name
-      );
-    } else {
-      // Android / Web fallback using simple prompt alerts
-      Alert.alert(
-        "Edit Exercise",
-        `Do you want to edit "${ex.name}"?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Rename to Bench Press Pro", 
-            onPress: () => edit(ex.id, { name: `${ex.name} Pro` }) 
-          },
-          { 
-            text: "Mark as High Intensity", 
-            onPress: () => edit(ex.id, { description: "High Intensity Workout 🔥" }) 
-          }
-        ]
-      );
-    }
-  };
+  // Group workouts by category
+  const categories = ["Chest", "Back", "Shoulders", "Arms", "Abs", "Legs"];
+  const grouped = categories
+    .map((cat) => ({
+      cat,
+      items: workouts.filter((w) => w.category === cat),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <View style={styles.container}>
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -126,60 +123,58 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsLabel}>Weekly Volume</Text>
-            <Text style={styles.statsValBig}>{weeklyVolume.toLocaleString()} kg</Text>
+
+        {/* Stats row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statChip}>
+            <Text style={styles.statChipVal}>{workouts.length}</Text>
+            <Text style={styles.statChipLabel}>Total</Text>
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsLabel}>Consistency</Text>
-            <Text style={[styles.statsValBig, { color: '#10B981' }]}>{consistencyDays} Days</Text>
+          <View style={styles.statChip}>
+            <Text style={[styles.statChipVal, { color: "#4ADE80" }]}>{grouped.length}</Text>
+            <Text style={styles.statChipLabel}>Categories</Text>
           </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsLabel}>PRs this month</Text>
-            <Text style={[styles.statsValBig, { color: '#F59E0B' }]}>{prsThisMonth}</Text>
-          </View>
-          <View style={styles.statsCard}>
-            <Text style={styles.statsLabel}>Active Streak</Text>
-            <Text style={styles.statsValBig}>{activeStreak} weeks</Text>
+          <View style={styles.statChip}>
+            <Text style={[styles.statChipVal, { color: "#FB923C" }]}>
+              {workouts.length > 0 ? workouts[0].category : "—"}
+            </Text>
+            <Text style={styles.statChipLabel}>Latest</Text>
           </View>
         </View>
 
-        {/* Empty State Message */}
-        {exercises.length === 0 ? (
+        {/* Empty state */}
+        {workouts.length === 0 ? (
           <View style={styles.emptyStateContainer}>
-            <Ionicons name="fitness-outline" size={48} color="#4B5563" style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>No Workouts Logged Yet</Text>
+            <Ionicons name="barbell-outline" size={52} color="#1F2937" style={styles.emptyIcon} />
+            <Text style={styles.emptyTitle}>No Workouts Yet</Text>
             <Text style={styles.emptySubtitle}>
-              Your workouts will show up here categorized by muscle group once you log them.
+              Head over to the Log tab, pick a category, and create your first workout.
             </Text>
-            <TouchableOpacity 
-              style={styles.emptyButton} 
+            <TouchableOpacity
+              style={styles.emptyButton}
               onPress={() => router.push("/log")}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
+              <Ionicons name="add" size={16} color="#FFF" />
               <Text style={styles.emptyButtonText}>Log First Workout</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          // Dynamic Exercise Categories
-          categories.map((cat) => {
-            const filtered = Stats.filterExercisesByCategory(exercises, cat);
-            if (filtered.length === 0) return null; // Only show category sections that have active logged exercises
-
+          grouped.map(({ cat, items }) => {
+            const cfg = CATEGORY_COLORS[cat];
             return (
               <View key={cat} style={styles.categorySection}>
-                <View style={styles.categoryHeader}>
-                  <Text style={styles.categoryTitle}>{cat.toUpperCase()}</Text>
-                  <Ionicons name="ellipsis-vertical" size={18} color="#6B7280" />
+                {/* Section header */}
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionDot, { backgroundColor: cfg.text }]} />
+                  <Text style={[styles.sectionTitle, { color: cfg.text }]}>
+                    {cat.toUpperCase()}
+                  </Text>
+                  <Text style={styles.sectionCount}>{items.length} workout{items.length !== 1 ? "s" : ""}</Text>
                 </View>
-                {filtered.map((ex) => (
-                  <ExerciseCard 
-                    key={ex.id} 
-                    ex={ex} 
-                    onEdit={() => handleEditExerciseName(ex)} 
-                  />
+
+                {items.map((w) => (
+                  <WorkoutCard key={w.id} w={w} />
                 ))}
               </View>
             );
@@ -187,10 +182,10 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity 
+      {/* FAB */}
+      <TouchableOpacity
         style={styles.fab}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
         onPress={() => router.push("/log")}
       >
         <Ionicons name="add" size={30} color="#FFFFFF" />
@@ -199,209 +194,223 @@ export default function HomeScreen() {
   );
 }
 
+// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1115',
+    backgroundColor: "#0F1115",
   },
+
+  // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingTop: 50,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F2937',
+    borderBottomColor: "#1F2937",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   logoIcon: {
     marginRight: 10,
   },
   logoText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     letterSpacing: 0.5,
   },
   logoSub: {
-    color: '#6B7280',
+    color: "#6B7280",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 1,
     marginTop: -2,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   iconButton: {
     padding: 6,
     borderRadius: 8,
-    backgroundColor: '#161A22',
+    backgroundColor: "#161A22",
   },
+
+  // Scroll
   scrollContent: {
     padding: 16,
-    paddingBottom: 100, // extra padding for FAB
+    paddingBottom: 110,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
+
+  // Stats row
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
     marginBottom: 24,
   },
-  statsCard: {
-    width: '48%',
-    backgroundColor: '#161A22',
-    padding: 16,
-    borderRadius: 12,
+  statChip: {
+    flex: 1,
+    backgroundColor: "#13171F",
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: "#1F2937",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
   },
-  statsLabel: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 6,
+  statChipVal: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "bold",
   },
-  statsValBig: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+  statChipLabel: {
+    color: "#6B7280",
+    fontSize: 11,
+    marginTop: 3,
+    letterSpacing: 0.5,
   },
+
+  // Category section
   categorySection: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     marginBottom: 10,
+    paddingHorizontal: 2,
   },
-  categoryTitle: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+  sectionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  exerciseCardWrapper: {
-    position: 'relative',
-    marginBottom: 10,
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "bold",
+    letterSpacing: 1.2,
+    flex: 1,
   },
-  exerciseCard: {
-    backgroundColor: '#161A22',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  sectionCount: {
+    color: "#4B5563",
+    fontSize: 11,
+  },
+
+  // Workout card
+  workoutCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#13171F",
     borderWidth: 1,
-    borderColor: '#1E293B',
-    paddingRight: 45, // Make room for floating edit pencil icon
+    borderColor: "#1F2937",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
   },
   cardLeft: {
-    flex: 1.2,
+    gap: 6,
   },
-  exerciseName: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+  categoryBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
   },
-  exerciseSub: {
-    color: '#6B7280',
+  categoryBadgeText: {
     fontSize: 12,
-    marginTop: 2,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  dateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  dateText: {
+    color: "#4B5563",
+    fontSize: 11,
   },
   cardRight: {
-    flex: 1.8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
-  statColumn: {
-    alignItems: 'flex-end',
+  idChip: {
+    color: "#374151",
+    fontSize: 12,
+    fontWeight: "600",
   },
-  statLabel: {
-    color: '#6B7280',
-    fontSize: 10,
-    textTransform: 'uppercase',
-  },
-  statVal: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  editButton: {
-    position: 'absolute',
-    right: 12,
-    top: '30%',
-    backgroundColor: '#1F2937',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+
+  // Empty state
   emptyStateContainer: {
-    backgroundColor: '#161A22',
+    backgroundColor: "#13171F",
     borderWidth: 1,
-    borderColor: '#1E293B',
-    borderRadius: 12,
-    padding: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: "#1F2937",
+    borderRadius: 14,
+    padding: 36,
+    alignItems: "center",
     marginTop: 10,
   },
   emptyIcon: {
-    marginBottom: 15,
+    marginBottom: 16,
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   emptySubtitle: {
-    color: '#9CA3AF',
+    color: "#6B7280",
     fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
-    paddingHorizontal: 15,
+    textAlign: "center",
+    lineHeight: 19,
+    marginBottom: 22,
+    paddingHorizontal: 10,
   },
   emptyButton: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#2563EB",
+    borderRadius: 10,
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
   emptyButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
+
+  // FAB
   fab: {
-    position: 'absolute',
+    position: "absolute",
     right: 20,
     bottom: 20,
-    backgroundColor: '#3B82F6',
+    backgroundColor: "#2563EB",
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
+
+
+
