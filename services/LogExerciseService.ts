@@ -1,5 +1,5 @@
 
-import { exercise } from '../types/LogExerciseServiceTypes.js'
+import { exercise , workout} from '../types/LogExerciseServiceTypes.js'
 
 
 // let exercises : Array<exercise> = []
@@ -9,7 +9,9 @@ export function addExercise(exercises: Array<exercise>, exercise: exercise) {
 
 }
 
-
+export function createWorkout(workout: workout){
+    
+}
 
 
 

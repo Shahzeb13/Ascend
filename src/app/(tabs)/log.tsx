@@ -1,17 +1,22 @@
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { exercise } from "../../types/LogExerciseServiceTypes";
+import { exercise } from "../../../types/LogExerciseServiceTypes";
 import { useExercises } from "../../context/ExerciseContext";
+import { newWorkout, workout } from "../../../types/LogExerciseServiceTypes";
 
 type CategoryType = "Back" | "Chest" | "Shoulders" | "Arms" | "Abs" | "Legs";
 
 export default function LogWorkoutScreen() {
-  const [exerciseName, setExerciseName] = useState("");
+  const [workoutName, setWorkoutName] = useState("");
   const [category, setCategory] = useState<CategoryType>("Chest");
   const [weight, setWeight] = useState("0.0");
   const [repsList, setRepsList] = useState<number[]>([10, 8, 8]);
-  
+  const [workout , setWorkout]  = useState<newWorkout>({
+    category: "Back",
+    exercises : [],
+
+  });
   // Use global context to save exercises
   const { add } = useExercises();
 
@@ -32,16 +37,15 @@ export default function LogWorkoutScreen() {
   };
 
   const handleSave = () => {
-    if (!exerciseName.trim()) {
+    if (!workoutName.trim()) {
       Alert.alert("Error", "Please enter an exercise name");
       return;
     }
 
     // 1. Map our screen state to the 'exercise' type required by the service
-    const newExercise: exercise = {
+    const newWorkout: exercise = {
       id: Math.random().toString(),
-      name: exerciseName,
-      category: category,
+      name: workoutName,
       description: `Logged workout - ${category}`,
       sets: repsList.map((reps, idx) => ({
         id: Math.random().toString(),
@@ -52,16 +56,16 @@ export default function LogWorkoutScreen() {
     };
 
     // 2. Add to global context
-    add(newExercise);
+    add(newWorkout);
 
     Alert.alert(
       "Workout Saved!",
-      `Successfully logged ${newExercise.name} with ${newExercise.sets.length} sets to the service layer!`,
+      `Successfully logged ${newWorkout.name} with ${newWorkout.sets.length} sets to the service layer!`,
       [{ text: "Awesome" }]
     );
 
     // Reset form after saving
-    setExerciseName("");
+    setWorkoutName("");
     setWeight("0.0");
     setRepsList([10, 8, 8]);
   };
