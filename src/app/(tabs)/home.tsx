@@ -43,7 +43,7 @@ function WorkoutCard({ w }: WorkoutCardProps) {
     <TouchableOpacity
       style={styles.workoutCard}
       activeOpacity={0.75}
-      onPress={() => router.push("/log")} // will go to edit screen later
+      onPress={() => router.push(`/updateWorkout/${w.id}`)}
     >
       {/* Left: Category badge + date */}
       <View style={styles.cardLeft}>
@@ -56,10 +56,18 @@ function WorkoutCard({ w }: WorkoutCardProps) {
         </View>
       </View>
 
-      {/* Right: ID chip + chevron */}
+      {/* Right: ID chip + edit button */}
       <View style={styles.cardRight}>
         <Text style={styles.idChip}>#{w.id}</Text>
-        <Ionicons name="chevron-forward" size={16} color="#374151" />
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            router.push(`/updateWorkout/${w.id}`);
+          }}
+        >
+          <Ionicons name="pencil" size={16} color="#3B82F6" />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -349,6 +357,12 @@ const styles = StyleSheet.create({
     color: "#374151",
     fontSize: 12,
     fontWeight: "600",
+  },
+  editButton: {
+    backgroundColor: "#1F2937",
+    padding: 6,
+    borderRadius: 8,
+    marginLeft: 4,
   },
 
   // Empty state
