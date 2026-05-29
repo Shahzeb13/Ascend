@@ -2,7 +2,7 @@ import * as sqlite from "expo-sqlite";
 
 
 // don't know the difference between async method and syncmethod! will try to laern later
-const db = sqlite.openDatabaseSync("Ascend.db");
+export const db = sqlite.openDatabaseSync("Ascend.db");
 //DON'T FORGET TO ENABLE FOREIGN KEY WHEN INIT DATABASE
 
 

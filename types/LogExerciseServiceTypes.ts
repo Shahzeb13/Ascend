@@ -3,17 +3,17 @@ type category = "Back" | "Chest" | "Shoulders" | "Arms" | "Abs"| "Legs"
 export type workout = {
     id  : string, 
     category: category;
-    exercises : exercise[]
+    created_at: string
 }
 
-export type newWorkout  = Omit<workout, 'id'>
+export type newWorkout  = Omit<workout, 'id' | 'created_at'>
 
 
 
 export type exercise = {
     id: string,
     name : string, 
-    sets : sets[]
+    workout_id: number,
     description : string,
 
 
@@ -22,7 +22,8 @@ export type exercise = {
 
 type sets = {
     id: string,
-    reps : number, 
+    reps : number,
+    exercise_id: number, 
     weight : number,
 
 }

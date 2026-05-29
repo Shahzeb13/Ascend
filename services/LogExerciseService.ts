@@ -1,5 +1,6 @@
 
-import { exercise , workout} from '../types/LogExerciseServiceTypes.js'
+import { db } from '../persistenceLayerService/databaseService.js';
+import { exercise , newWorkout, workout} from '../types/LogExerciseServiceTypes.js'
 
 
 // let exercises : Array<exercise> = []
@@ -9,10 +10,22 @@ export function addExercise(exercises: Array<exercise>, exercise: exercise) {
 
 }
 
-export function createWorkout(workout: workout){
-    
-}
+export function createWorkout(workout: newWorkout){
+    try{
 
+        const result = db.runSync(`INSERT INTO Workouts (category) VALUES (?)`, [workout.category] );
+
+        const response = db.getFirstSync(`SELECT * FROM (Workouts) WHERE id = ? ` , [result.lastInsertRowId]);
+        return response;
+    } catch(error){
+        console.error("Error creating a workout");
+        if(error instanceof Error){
+            console.log("Error Message" , error.message);
+            console.log("Stack Trace " , error.stack);
+        }
+    }
+}
+ 
 
 
 export function removeExercise(exercises: Array<exercise>, id: string) {

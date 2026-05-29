@@ -14,7 +14,7 @@ export default function LogWorkoutScreen() {
   const [repsList, setRepsList] = useState<number[]>([10, 8, 8]);
   const [workout , setWorkout]  = useState<newWorkout>({
     category: "Back",
-    exercises : [],
+   
 
   });
   // Use global context to save exercises
